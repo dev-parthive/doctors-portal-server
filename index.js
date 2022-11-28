@@ -57,6 +57,25 @@ const appoinmentOptionCollection = client.db("Doctors-portal").collection("servi
 const bookingsCollection = client.db("Doctors-portal").collection("bookings")
 const usersCollection = client.db("Doctors-portal").collection("users")
 const  doctorsCollection = client.db("Doctors-portal").collection('doctors')
+
+
+
+//verifyAdmin 
+// NOTE : make sure you use verifyAdmin after verifyJWT 
+const verifyAdmin = async (req, res, next) =>{
+    console.log('inside verifyAdmin ', req.decoded.email)
+    const decodedEmail = req.decoded.email
+    const query = { email: decodedEmail }
+    const user = await usersCollection.findOne(query)
+    if (user?.role !== 'admin') {
+        return res.status(403).send({
+            message: 'forbiddend Access'
+        })
+    }
+    next()
+}
+
+
 // end point 
 //get appointmentOPtion 
 
@@ -217,16 +236,16 @@ app.get('/users',  async (req, res) => {
 })
 
 //make admin api 
-app.put('/users/admin/:id', verifyJWT, async (req, res) => {
+app.put('/users/admin/:id', verifyJWT, verifyAdmin ,  async (req, res) => {
     try {
-        const decodedEmail = req.decoded.email
-        const query = { email: decodedEmail }
-        const user = await usersCollection.findOne(query)
-        if (user?.role !== 'admin') {
-            return res.status(403).send({
-                message: 'forbiddend Access'
-            })
-        }
+        // const decodedEmail = req.decoded.email
+        // const query = { email: decodedEmail }
+        // const user = await usersCollection.findOne(query)
+        // if (user?.role !== 'admin') {
+        //     return res.status(403).send({
+        //         message: 'forbiddend Access'
+        //     })
+        // }
         const id = req.params.id
         const filter = { _id: ObjectId(id) }
         const options = { upsert: true }
@@ -264,7 +283,7 @@ app.get('/appointmentSpecialty', async(req, res)=>{
 })
 
 //doctors er der information server a patanor jonno 
-app.post('/doctors',  async (req, res) => {
+app.post('/doctors', verifyJWT , verifyAdmin ,  async (req, res) => {
     const doctor = req.body;
     const result = await doctorsCollection.insertOne(doctor);
     res.send(result);
@@ -272,20 +291,20 @@ app.post('/doctors',  async (req, res) => {
 
 // doctors der information db theke  load korar jonno 
 
-app.get('/doctors', async(req, res) =>{
+app.get('/doctors', verifyJWT , verifyAdmin ,  async(req, res) =>{
     const query = {}
     const doctors = await doctorsCollection.find(query).toArray()
     res.send(doctors)
 })
 
 //doctor delete api 
-app.delete('/doctor/:id', async(req, res)=>{
+app.delete('/doctor/:id', verifyJWT , verifyAdmin , async(req, res)=>{
     const id = req.params.id
     try{
         const query = ({_id: ObjectId(id)})
         const result = await doctorsCollection.deleteOne(query)
         if(result.deletedCount){
-            console.log('doctor deleted')
+            // console.log('doctor deleted')
             res.send({
                 success: true , 
                 message: `doctor deleted`
@@ -302,6 +321,28 @@ app.delete('/doctor/:id', async(req, res)=>{
             error: err.message
         })
     }
+})
+
+//temporary to update price field on appointment options
+app.get('/addprice', async(req, res)=>{
+    const filter = {}
+    const options = {upsert: true}
+    const updatedDoc = {
+        $set: {
+            price: 99
+        }
+    }
+    const result = await appoinmentOptionCollection.updateMany(filter , updatedDoc, options)
+    res.send(result)
+
+})
+
+// id diye  bookings er data laod kora 
+app.get('/bookings/:id', async(req ,res)=>{
+    const id = req.params.id
+    const query = {_id: ObjectId(id)}
+    const booking = await bookingsCollection.findOne(query)
+    res.send(booking)
 })
 
 app.get('/', async (req, res) => {

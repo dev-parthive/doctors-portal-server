@@ -6,6 +6,8 @@ require('dotenv').config()
 require('colors')
 const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { default: Stripe } = require('stripe');
+const stripe = process.env.SECRET_KEY
 
 // middleware
 app.use(express.json())
@@ -344,6 +346,44 @@ app.get('/bookings/:id', async(req ,res)=>{
     const booking = await bookingsCollection.findOne(query)
     res.send(booking)
 })
+
+// /stripe api start here  
+
+// app.post('/create-payment-intent', async (req, res) => {
+//     const booking = req.body;
+//     const price = booking.price;
+//     const amount = price * 100;
+
+//     const paymentIntent = await stripe.paymentIntent.create({
+//         currency: 'usd',
+//         amount: amount,
+//         "payment_method_types": [
+//             "card"
+//         ]
+//     });
+//     res.send({
+//         clientSecret: paymentIntent.client_secret,
+//     });
+// });
+
+app.post('/create-payment-intent', async(req, res) =>{
+    const booking = req.body;
+    const price = booking.price
+    const amount = price * 100 
+    const paymentIntent = await stripe.paymentIntents.create({
+        currency: 'usd', 
+        amount : amount, 
+        "payment_method_types": [
+            "card"
+        ]
+
+    });
+    res.send({
+        clientSecret : paymentIntent.client_secret, 
+    });
+    
+})
+
 
 app.get('/', async (req, res) => {
     res.send('doctors portal server is runnig ')
